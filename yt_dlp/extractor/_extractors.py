@@ -1391,6 +1391,7 @@ from .orf import (
     ORFRadioIE,
     ORFIPTVIE,
 )
+from .otobanana import OtobananaIE
 from .outsidetv import OutsideTVIE
 from .owncloud import OwnCloudIE
 from .packtpub import (
