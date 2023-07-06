@@ -24,10 +24,10 @@ class OtobananaIE(InfoExtractor):
                 'title': ('title', {str_or_none}),
                 'url': ('audio_url', {url_or_none}),
                 'description': ('text', {str_or_none}),
-                'thumbnail': ('thumbnail_url', {url_or_none}),
+                'thumbnail': (('thumbnail_url', ('user', 'avatar_url')), {url_or_none}),
                 'uploader': ('user', 'name', {str_or_none}),
                 'uploader_id': ('user', 'username', {str_or_none}),
                 'view_count': ('play_count', {int_or_none}),
                 'like_count': ('like_count', {int_or_none}),
-            }))
+            }), get_all=False)
         }
