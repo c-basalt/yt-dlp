@@ -1286,6 +1286,7 @@ from .niconico import (
     NicovideoSearchIE,
     NicovideoSearchURLIE,
     NicovideoTagURLIE,
+    NiconicoChannelIE,
     NiconicoLiveIE,
 )
 from .ninaprotocol import NinaProtocolIE

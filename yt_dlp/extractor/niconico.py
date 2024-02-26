@@ -829,6 +829,48 @@ class NiconicoUserIE(InfoExtractor):
         return self.playlist_result(self._entries(list_id), list_id, ie=NiconicoIE.ie_key())
 
 
+class NiconicoChannelIE(InfoExtractor):
+    IE_NAME = 'niconico:ch'
+    _VALID_URL = r'https://ch.nicovideo.jp/(?P<id>[\w-]+)(?:/video)?/?(?:$|[#?])'
+    _TESTS = [{
+        'url': 'https://ch.nicovideo.jp/tenshi-nano/video',
+        'info_dict': {
+            'id': 'tenshi-nano',
+            'title': '天使のえちえちちゃんねる！',
+            'description': 'md5:a7183b2b1cbfc2f90bbe661762d8be75',
+            'thumbnail': r're:https://img\.cdn\.nimg\.jp/.*',
+        },
+        'playlist_mincount': 133,
+    }]
+
+    def _entries(self, webpage, channel_id):
+        total_pages = max(map(int, re.findall(
+            r'<option value="(\d+)"',
+            self._search_regex(r'<li class="pages">\s*<select[^>]+>([\s\S]*?)</select>', webpage, 'pages')
+        )))
+        for page_num in range(1, total_pages + 1):
+            if page_num > 1:
+                webpage = self._download_webpage(
+                    f'https://ch.nicovideo.jp/{channel_id}/video?page={page_num}',
+                    channel_id, f'Downloading video page {page_num}')
+            for match in re.finditer(
+                r'<div class="item_right">\s*<h6 class="title">\s*<a href="([^"]+)"[^<]+</a>\s*</h6>', webpage
+            ):
+                yield self.url_result(match[1])
+
+    def _real_extract(self, url):
+        channel_id = self._match_id(url)
+        if '/video' not in url:
+            self.to_screen(f'Downloading only videos on https://ch.nicovideo.jp/{channel_id}/video')
+        webpage = self._download_webpage(
+            f'https://ch.nicovideo.jp/{channel_id}/video', channel_id, 'Downloading video page 1')
+        return self.playlist_result(self._entries(webpage, channel_id), channel_id, **{
+            'title': self._og_search_property('site_name', webpage, 'title'),
+            'description': self._og_search_description(webpage),
+            'thumbnail': self._og_search_thumbnail(webpage),
+        })
+
+
 class NiconicoLiveIE(InfoExtractor):
     IE_NAME = 'niconico:live'
     IE_DESC = 'ニコニコ生放送'
