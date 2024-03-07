@@ -416,12 +416,26 @@ class NiconicoIE(InfoExtractor):
         def get_video_info(*items, get_first=True, **kwargs):
             return traverse_obj(api_data, ('video', *items), get_all=not get_first, **kwargs)
 
-        quality_info = api_data['media']['delivery']['movie']
-        session_api_data = quality_info['session']
-        for (audio_quality, video_quality, protocol) in itertools.product(quality_info['audios'], quality_info['videos'], session_api_data['protocols']):
-            fmt = self._extract_format_for_quality(video_id, audio_quality, video_quality, protocol)
-            if fmt:
-                formats.append(fmt)
+        if api_data['media']['delivery']:
+            quality_info = api_data['media']['delivery']['movie']
+            session_api_data = quality_info['session']
+            for (audio_quality, video_quality, protocol) in itertools.product(quality_info['audios'], quality_info['videos'], session_api_data['protocols']):
+                fmt = self._extract_format_for_quality(video_id, audio_quality, video_quality, protocol)
+                if fmt:
+                    formats.append(fmt)
+        else:
+            watch_id, track_id, access_key = traverse_obj(api_data, (
+                (('client', ('watchId', 'watchTrackId')), ('media', 'domand', 'accessRightKey')),))
+            format_ids = traverse_obj(api_data, (
+                'media', 'domand', ('videos', 'audios'), lambda _, v: v['isAvailable'], 'id'))
+            for format_id in format_ids:
+                formats.extend(self._extract_m3u8_formats(self._download_json(
+                    f'https://nvapi.nicovideo.jp/v1/watch/{watch_id}/access-rights/hls?actionTrackId={track_id}',
+                    video_id, note=f'Downloading format {format_id}',
+                    headers={'x-access-right-key': access_key, 'x-frontend-id': 6,
+                             'x-request-with': 'https://www.nicovideo.jp'},
+                    data=json.dumps({"outputs": [[format_id]]}).encode()
+                )['data']['contentUrl'], video_id))
 
         # Start extracting information
         tags = None
