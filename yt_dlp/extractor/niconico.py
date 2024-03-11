@@ -424,18 +424,19 @@ class NiconicoIE(InfoExtractor):
                 if fmt:
                     formats.append(fmt)
         else:
-            watch_id, track_id, access_key = traverse_obj(api_data, (
-                (('client', ('watchId', 'watchTrackId')), ('media', 'domand', 'accessRightKey')),))
+            watch_id, track_id = traverse_obj(api_data, ('client', ('watchId', 'watchTrackId')))
+            access_key = api_data['media']['domand']['accessRightKey']
             format_ids = traverse_obj(api_data, (
                 'media', 'domand', ('videos', 'audios'), lambda _, v: v['isAvailable'], 'id'))
             for format_id in format_ids:
-                formats.extend(self._extract_m3u8_formats(self._download_json(
+                m3u8_formats = self._extract_m3u8_formats(self._download_json(
                     f'https://nvapi.nicovideo.jp/v1/watch/{watch_id}/access-rights/hls?actionTrackId={track_id}',
                     video_id, note=f'Downloading format {format_id}',
-                    headers={'x-access-right-key': access_key, 'x-frontend-id': 6,
-                             'x-request-with': 'https://www.nicovideo.jp'},
+                    headers={**self._API_HEADERS, 'x-request-with': 'https://www.nicovideo.jp',
+                             'x-access-right-key': access_key},
                     data=json.dumps({"outputs": [[format_id]]}).encode()
-                )['data']['contentUrl'], video_id))
+                )['data']['contentUrl'], video_id)
+                formats.extend([{**f, 'format_id': format_id} for f in m3u8_formats])
 
         # Start extracting information
         tags = None
