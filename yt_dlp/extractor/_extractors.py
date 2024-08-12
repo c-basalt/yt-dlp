@@ -1607,6 +1607,7 @@ from .qqmusic import (
     QQMusicAlbumIE,
     QQMusicIE,
     QQMusicPlaylistIE,
+    QQMusicSearchIE,
     QQMusicSingerIE,
     QQMusicToplistIE,
     QQMusicVideoIE,
