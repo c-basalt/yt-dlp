@@ -4,7 +4,7 @@ import json
 import random
 import time
 
-from .common import InfoExtractor
+from .common import InfoExtractor, SearchInfoExtractor
 from ..utils import (
     ExtractorError,
     OnDemandPagedList,
@@ -297,14 +297,14 @@ class QQMusicSingerIE(QQMusicBaseIE):
 
 
 class QQPlaylistBaseIE(InfoExtractor):
-    def _extract_entries(self, info_json, path):
+    def _extract_entries(self, info_json, path, id_key='songmid', title_key='songname'):
         for song in traverse_obj(info_json, path):
-            song_mid = song.get('songmid')
+            song_mid = song.get(id_key)
             if not song_mid:
                 continue
             yield self.url_result(
                 f'https://y.qq.com/n/ryqq/songDetail/{song_mid}',
-                QQMusicIE, song_mid, song.get('songname'))
+                QQMusicIE, song_mid, song.get(title_key))
 
 
 class QQMusicAlbumIE(QQPlaylistBaseIE):
@@ -494,3 +494,45 @@ class QQMusicVideoIE(QQMusicBaseIE):
                 'view_count': ('playcnt', {int_or_none}),
             })),
         }
+
+
+class QQMusicSearchIE(SearchInfoExtractor, QQPlaylistBaseIE):
+    IE_NAME = 'qqmusic:search'
+    IE_DESC = 'QQ音乐 - 搜索'
+    _SEARCH_KEY = 'qqmusicsearch'
+
+    _TESTS = [{
+        'url': 'qqmusicsearch3:永夜のパレード',
+        'playlist_count': 3,
+        'info_dict': {
+            'id': '永夜のパレード',
+            'title': '永夜のパレード',
+        },
+        'playlist': [{
+            'md5': 'd7adc5c438d12e2cb648cca81593fd47',
+            'info_dict': {
+                'id': '004Ti8rT003TaZ',
+                'ext': 'mp3',
+                'title': '永夜のパレード (永夜的游行)',
+                'album': '幻想遊園郷 -Fantastic Park-',
+                'release_date': '20111230',
+                'duration': 281,
+                'creators': ['ケーキ姫', 'JUMA'],
+                'genres': ['Pop'],
+                'description': 'md5:b5261f3d595657ae561e9e6aee7eb7d9',
+                'size': 4501244,
+                'thumbnail': r're:^https?://.*\.jpg(?:$|[#?])',
+                'subtitles': 'count:1',
+            },
+        }],
+    }]
+
+    def _search_results(self, query):
+        yield from self._extract_entries(self._download_json(
+            'https://c6.y.qq.com/splcloud/fcgi-bin/smartbox_new.fcg', query, query={
+                'cv': 4747474,
+                'ct': 24,
+                'format': 'json',
+                'platform': 'yqq.json',
+                'key': query,
+            }), ('data', 'song', 'itemlist', ...), id_key='mid', title_key='name')
