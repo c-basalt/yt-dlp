@@ -132,6 +132,10 @@ class WithnyUserArchivesIE(WithnyBaseIE):
 
 class WithnyLiveChannelIE(WithnyBaseIE):
     _VALID_URL = r'https://www.withny.fun/channels/(?P<id>[\d\w]+)'
+    _TESTS = [{
+        'url': 'https://www.withny.fun/channels/Lunahlive',
+        'only_matching': True,
+    }]
 
     def _real_extract(self, url):
         channel_id = self._match_id(url)
