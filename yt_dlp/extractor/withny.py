@@ -140,9 +140,10 @@ class WithnyLiveChannelIE(WithnyBaseIE):
     def _real_extract(self, url):
         channel_id = self._match_id(url)
 
-        streams = self._download_json(
+        streams = traverse_obj(self._download_json(
             'https://www.withny.fun/api/streams', channel_id, note='Downloading stream info',
-            headers={'Referer': url}, query={'username': channel_id})
+            headers={'Referer': url}, query={'username': channel_id}),
+            lambda _, v: v.get('actualStartedAt') or v.get('startedAt'))
         if not streams:
             raise UserNotLive
         stream = streams[0]
