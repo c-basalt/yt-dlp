@@ -2440,6 +2440,11 @@ from .wistia import (
     WistiaIE,
     WistiaPlaylistIE,
 )
+from .withny import (
+    WithnyArchiveIE,
+    WithnyLiveIE,
+    WithnyUserArchivesIE,
+)
 from .wordpress import (
     WordpressMiniAudioPlayerEmbedIE,
     WordpressPlaylistEmbedIE,
