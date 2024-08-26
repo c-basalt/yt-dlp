@@ -47,12 +47,13 @@ class WithnyBaseIE(InfoExtractor):
             data=json.dumps({'email': username, 'password': password}).encode(),
             headers={'Referer': 'https://www.withny.fun/login', 'Content-Type': 'application/json'})
 
-        token = data["token"]
-        self._set_cookie('www.withny.fun', 'auth._token.local', urllib.parse.quote(f'{data["tokenType"]} {token}'))
-        self._set_cookie('www.withny.fun', 'auth._token_expiration.local', str(self._parse_token_expire(token) * 1000))
-        self._set_cookie('www.withny.fun', 'auth._refresh_token.local', data['refreshToken'])
-        self._set_cookie('www.withny.fun', 'auth._refresh_token_expiration.local',
-                         str(int((self._parse_token_expire(token) + 2505600 + random.random()) * 1000)))
+        set_cookie = lambda key, value: self._set_cookie('www.withny.fun', key, str(value))
+
+        set_cookie('auth._token.local', urllib.parse.quote(f'{data["tokenType"]} {data["token"]}'))
+        set_cookie('auth._token_expiration.local', self._parse_token_expire(data['token']) * 1000)
+        set_cookie('auth._refresh_token.local', data['refreshToken'])
+        set_cookie('auth._refresh_token_expiration.local',
+                   int((self._parse_token_expire(data['token']) + 2505600 + random.random()) * 1000))
 
     def _download_webpage_nuxt(self, url, video_id, login_msg='You need to login to access', **kwargs):
         webpage, urlh = self._download_webpage_handle(url, video_id, **kwargs)
