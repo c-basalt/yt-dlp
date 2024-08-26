@@ -2442,7 +2442,8 @@ from .wistia import (
 )
 from .withny import (
     WithnyArchiveIE,
-    WithnyLiveIE,
+    WithnyLiveChannelIE,
+    WithnyLiveRoomIE,
     WithnyUserArchivesIE,
 )
 from .wordpress import (
