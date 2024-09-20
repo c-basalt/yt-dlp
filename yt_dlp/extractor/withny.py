@@ -141,7 +141,7 @@ class WithnyLiveChannelIE(WithnyBaseIE):
         channel_id = self._match_id(url)
 
         streams = traverse_obj(self._download_json(
-            'https://www.withny.fun/api/streams', channel_id, note='Downloading stream info',
+            'https://www.withny.fun/api/streams/with-rooms', channel_id, note='Downloading stream info',
             headers={'Referer': url}, query={'username': channel_id}),
             lambda _, v: v.get('actualStartedAt') or v.get('startedAt'))
         if not streams:
