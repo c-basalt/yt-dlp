@@ -1867,6 +1867,7 @@ The following extractors use this feature:
 #### rplaylive
 
 * `jwt_token`: JWT token that can be found as value of `_AUTHORIZATION_` entry from the browser local storage. This can be used as an alternative login method.
+* `lang`: Prefer translated metadata (`title`, `description`, and `uploader`) of this language code (case-sensitive) _if_ it exists for the video. 2 letter lowercase codes i.e. `en`, `jp`, `ko`
 
 **Note**: These options may be changed/removed in the future without concern for backward compatibility
 

@@ -1,5 +1,6 @@
 import base64
 import datetime as dt
+import functools
 import hashlib
 import hmac
 import json
@@ -66,6 +67,10 @@ class RPlayBaseIE(InfoExtractor):
             'Referer': 'https://rplay.live/',
             'Butter': self.get_butter_token(),
         }
+
+    @functools.cached_property
+    def _preferred_lang(self):
+        return self._configuration_arg('lang', ie_key='rplaylive', casesense=True, default=[None])[0]
 
     def _login_hint(self, *args, **kwargs):
         return (f'Use --username and --password, --netrc-cmd, --netrc ({self._NETRC_MACHINE}) '
@@ -212,6 +217,19 @@ class RPlayVideoIE(RPlayBaseIE):
             'age_limit': (('hideContent', 'isAdultContent'), {lambda x: 18 if x else None}, any),
             'live_status': ('isReplayContent', {lambda x: 'was_live' if x else None}),
         })
+        if self._preferred_lang:
+            translated_metainfo = traverse_obj(video_info, {
+                'title': ('multiLangTitle', self._preferred_lang, {str}),
+                'description': ('multiLangIntroText', self._preferred_lang, {str}),
+                'uploader': ('creatorInfo', 'multiLangNick', self._preferred_lang, {str}),
+            })
+            if ('title' not in translated_metainfo
+                    or 'description' not in translated_metainfo
+                    or 'uploader' not in translated_metainfo):
+                self.report_warning(
+                    f'Did not find translations for {self._preferred_lang} for all metadata. '
+                    'Metadata without translations will be in the original language', video_id)
+            metainfo.update(translated_metainfo)
 
         m3u8_url = traverse_obj(video_info, ('canView', 'url', {url_or_none}))
         if not m3u8_url:
