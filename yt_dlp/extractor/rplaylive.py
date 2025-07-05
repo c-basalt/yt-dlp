@@ -215,6 +215,9 @@ class RPlayVideoIE(RPlayBaseIE):
             'uploader_id': ('creatorOid', {str}),
             'tags': ('hashtags', lambda _, v: v[0] != '_'),
             'age_limit': (('hideContent', 'isAdultContent'), {lambda x: 18 if x else None}, any),
+            'location': ('location', {str}),
+            'view_count': ('views', {int}),
+            'like_count': ('likes', {int}),
             'live_status': ('isReplayContent', {lambda x: 'was_live' if x else None}),
         })
         if self._preferred_lang:
