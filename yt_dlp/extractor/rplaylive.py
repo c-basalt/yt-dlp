@@ -1,6 +1,5 @@
 import base64
 import datetime as dt
-import functools
 import hashlib
 import hmac
 import json
@@ -68,10 +67,6 @@ class RPlayBaseIE(InfoExtractor):
             'Butter': self.get_butter_token(),
         }
 
-    @functools.cached_property
-    def _preferred_lang(self):
-        return self._configuration_arg('lang', ie_key='rplaylive', casesense=True, default=[None])[0]
-
     def _login_hint(self, *args, **kwargs):
         return (f'Use --username and --password, --netrc-cmd, --netrc ({self._NETRC_MACHINE}) '
                 'or --extractor-args "rplaylive:jwt_token=xxx" to provide account credentials')
@@ -138,6 +133,9 @@ class RPlayVideoIE(RPlayBaseIE):
             'uploader': '杏都める',
             'uploader_id': '667adc9e9aa7f739a2158ff3',
             'tags': ['杏都める', 'めいどるーちぇ', '無料', '耳舐め', 'ASMR'],
+            'like_count': int,
+            'view_count': int,
+            'location': 'JP',
         },
     }, {
         'url': 'https://rplay.live/play/66783c65dcd1c768a8a69f24/',
@@ -157,7 +155,31 @@ class RPlayVideoIE(RPlayBaseIE):
             'tags': 'count:4',
             'age_limit': 18,
             'live_status': 'was_live',
+            'like_count': int,
+            'view_count': int,
+            'location': 'JP',
         },
+    }, {
+        'url': 'https://rplay.live/play/682065da13ed2c564c77d8f7',
+        'info_dict': {
+            'id': '682065da13ed2c564c77d8f7',
+            'ext': 'mp4',
+            'title': 'md5:9551c4c0ffe610ef57a87fd1e8941073',
+            'description': 'md5:eb03a6c7200022d1554ba67feb6043e0',
+            'timestamp': 1746953690,
+            'upload_date': '20250511',
+            'release_timestamp': 1746953805,
+            'release_date': '20250511',
+            'duration': 11.483,
+            'thumbnail': 'https://pb.rplay.live/thumbnail/682065da13ed2c564c77d8f7',
+            'uploader': 'Seldea',
+            'uploader_id': '64d483add2c96306099ef734',
+            'tags': ['셀데아', '무료', 'Free', '無料'],
+            'like_count': int,
+            'view_count': int,
+            'location': 'KR',
+        },
+        'params': {'extractor_args': {'rplaylive': {'lang': ['en']}}},
     }, {
         'url': 'https://rplay.live/play/664f6dbe8ff72ac8bb0aecfc',
         'info_dict': {
@@ -175,6 +197,9 @@ class RPlayVideoIE(RPlayBaseIE):
             'uploader_id': '6640ce9db293d7d82bf76cfd',
             'tags': 'count:3',
             'age_limit': 18,
+            'like_count': int,
+            'view_count': int,
+            'location': 'JP',
         },
         'skip': 'subscribe required',
     }]
@@ -220,18 +245,16 @@ class RPlayVideoIE(RPlayBaseIE):
             'like_count': ('likes', {int}),
             'live_status': ('isReplayContent', {lambda x: 'was_live' if x else None}),
         })
-        if self._preferred_lang:
+        if preferred_lang := self._configuration_arg('lang', ie_key='rplaylive', default=[None])[0]:
             translated_metainfo = traverse_obj(video_info, {
-                'title': ('multiLangTitle', self._preferred_lang, {str}),
-                'description': ('multiLangIntroText', self._preferred_lang, {str}),
-                'uploader': ('creatorInfo', 'multiLangNick', self._preferred_lang, {str}),
+                'title': ('multiLangTitle', preferred_lang, {str}),
+                'description': ('multiLangIntroText', preferred_lang, {str}),
+                'uploader': ('creatorInfo', 'multiLangNick', preferred_lang, {str}),
             })
-            if ('title' not in translated_metainfo
-                    or 'description' not in translated_metainfo
-                    or 'uploader' not in translated_metainfo):
+            if missing := [k for k in ['title', 'description', 'uploader'] if k not in translated_metainfo]:
                 self.report_warning(
-                    f'Did not find translations for {self._preferred_lang} for all metadata. '
-                    'Metadata without translations will be in the original language', video_id)
+                    f'Did not find translations for {preferred_lang} for fields: {", ".join(missing)}; '
+                    'will use original language for these field(s)', video_id)
             metainfo.update(translated_metainfo)
 
         m3u8_url = traverse_obj(video_info, ('canView', 'url', {url_or_none}))
