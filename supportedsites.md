@@ -506,7 +506,8 @@ The only reliable way to check if a site is supported is to try it.
  - **GDCVault**: [*gdcvault*](## "netrc machine") (**Currently broken**)
  - **GediDigital**
  - **gem.cbc.ca**: [*cbcgem*](## "netrc machine")
- - **gem.cbc.ca:live**
+ - **gem.cbc.ca:live**: [*cbcgem*](## "netrc machine")
+ - **gem.cbc.ca:olympics**: [*cbcgem*](## "netrc machine")
  - **gem.cbc.ca:playlist**: [*cbcgem*](## "netrc machine")
  - **Genius**
  - **GeniusLyrics**
@@ -734,6 +735,8 @@ The only reliable way to check if a site is supported is to try it.
  - **Livestreamfails**
  - **Lnk**
  - **loc**: Library of Congress
+ - **Locipo**
+ - **LocipoPlaylist**
  - **Loco**
  - **loom**
  - **loom:folder**: (**Currently broken**)
@@ -1226,6 +1229,9 @@ The only reliable way to check if a site is supported is to try it.
  - **RoyaLive**
  - **Rozhlas**
  - **RozhlasVltava**
+ - **RPlayLive**: [*rplaylive*](## "netrc machine")
+ - **RPlayUser**
+ - **RPlayVideo**: [*rplaylive*](## "netrc machine")
  - **RTBF**: [*rtbf*](## "netrc machine") (**Currently broken**)
  - **RTDocumentry**
  - **RTDocumentryPlaylist**
@@ -1664,6 +1670,7 @@ The only reliable way to check if a site is supported is to try it.
  - **ViMP:Playlist**
  - **Viously**
  - **Viqeo**: (**Currently broken**)
+ - **Visir**: Vísir
  - **Viu**
  - **viu:ott**: [*viu*](## "netrc machine")
  - **viu:playlist**
