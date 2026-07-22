@@ -18,46 +18,18 @@ from ..utils import (
 
 
 class WithnyBaseIE(InfoExtractor):
-    _NETRC_MACHINE = 'withny'
-
-    def _login_hint(self, *args, **kwargs):
-        return super()._login_hint().replace('--cookies-from-browser, ', '') + '. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies'
-
-    def _get_cookie(self, key, transform=lambda x: x):
-        return try_get(self._get_cookies('https://www.withny.fun/').get(key), lambda x: transform(x.value))
-
-    def _parse_token_expire(self, token):
-        return try_get(token, lambda x: int(jwt_decode_hs256(x.split()[-1])['exp'])) or 0
-
-    @property
-    def bearer_token(self):
-        token = self._get_cookie('auth._token.local', urllib.parse.unquote)
-        if not token:
-            self.report_warning(self._login_hint())
-        elif time.time() > self._parse_token_expire(token):
-            self.report_warning(f'Token cookie has expired, please provide updated cookies. {self._login_hint()}')
-        return token
-
-    def _perform_login(self, username, password):
-        if time.time() < self._parse_token_expire(self._get_cookie('auth._token.local', urllib.parse.unquote)) - 3600:
-            return
-        self.report_login()
-        data = self._download_json(
-            'https://www.withny.fun/api/auth/login', None, False,
-            data=json.dumps({'email': username, 'password': password}).encode(),
-            headers={'Referer': 'https://www.withny.fun/login', 'Content-Type': 'application/json'})
-
-        set_cookie = lambda key, value: self._set_cookie('www.withny.fun', key, str(value))
-
-        set_cookie('auth._token.local', urllib.parse.quote(f'{data["tokenType"]} {data["token"]}'))
-        set_cookie('auth._token_expiration.local', self._parse_token_expire(data['token']) * 1000)
-        set_cookie('auth._refresh_token.local', data['refreshToken'])
-        set_cookie('auth._refresh_token_expiration.local',
-                   int((self._parse_token_expire(data['token']) + 2505600 + random.random()) * 1000))
+    def _init_session(self):
+        token = self._download_webpage(
+            'https://www.withny.fun/api/auth/csrf', None, 'Downloading token')
+        session_info = self._download_json(
+            'https://www.withny.fun/api/auth/session', None, 'Downloading session info',
+            data=token.encode(), headers={'Content-Type': 'application/json'}
+        )
+        print(session_info)
 
     def _download_webpage_nuxt(self, url, video_id, login_msg='You need to login to access', **kwargs):
         webpage, urlh = self._download_webpage_handle(url, video_id, **kwargs)
-        if urlh.url == 'https://www.withny.fun/login':
+        if urlh.url.startswith('https://www.withny.fun/login'):
             self.raise_login_required(login_msg)
         return self._search_nuxt_data(webpage, video_id)
 
@@ -103,6 +75,7 @@ class WithnyArchiveIE(WithnyBaseIE):
     def _real_extract(self, url):
         video_id = self._match_id(url)
 
+        # self._init_session()
         archive_data = self._download_webpage_nuxt(url, video_id, 'You need to login to access archive')['archive']
         return self._parse_archive_data(archive_data, video_id)
 
