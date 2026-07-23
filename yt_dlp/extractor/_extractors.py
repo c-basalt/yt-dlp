@@ -2290,10 +2290,9 @@ from .wistia import (
     WistiaPlaylistIE,
 )
 from .withny import (
-    WithnyArchiveIE,
-    WithnyLiveChannelIE,
-    WithnyLiveRoomIE,
-    WithnyUserArchivesIE,
+    WithnyVideoIE,
+    WithnyPurchaseListIE,
+    WithnyLiveIE,
 )
 from .wordpress import (
     WordpressMiniAudioPlayerEmbedIE,
