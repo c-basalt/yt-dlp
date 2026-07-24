@@ -4,7 +4,7 @@ import random
 import re
 
 from .common import InfoExtractor
-from ..dependencies import websockets
+from ..networking import Request
 from ..utils import (
     ExtractorError,
     UserNotLive,
@@ -143,19 +143,21 @@ class WithnyLiveIE(WithnyBaseIE):
         if not token:
             self.raise_login_required()
 
-        ws_url = f'wss://api.withny.fun/socket.io/?uuid={channel_id}&token={token}&passCode=undefined&EIO=4&transport=websocket'
-        with websockets.sync.client.connect(ws_url, origin='https://www.withny.fun') as ws:
-            ws.send('40/channels,{"sessionID":"%s"}' % ''.join(random.choices('0123456789abcdef', k=16)))
-            for msg in ws:
-                if isinstance(msg, str):
-                    if msg.startswith('42/channels,["stream"'):
-                        stream_data = json.loads(msg.split(',', maxsplit=1)[1])[1]
-                        break
-                    elif msg == '2':
-                        ws.send('3')  # heartbeat
-                    elif 'changeNumOfStandby' in msg:
-                        self.to_screen(f'{user_id}: channel standby')
-                        self._raise_not_live()
+        ws = self._request_webpage(Request(
+            'wss://api.withny.fun/socket.io/', headers={'Origin': 'https://www.withny.fun'},
+            query={'uuid': channel_id, 'token': token, 'passCode': 'undefined', 'EIO': 4, 'transport': 'websocket'}),
+            user_id, note='Fetching stream info via WebSocket')
+        ws.send('40/channels,{"sessionID":"%s"}' % ''.join(random.choices('0123456789abcdef', k=16)))
+        while True:
+            if isinstance(msg := ws.recv(), str):
+                if msg.startswith('42/channels,["stream"'):
+                    stream_data = json.loads(msg.split(',', maxsplit=1)[1])[1]
+                    break
+                elif msg == '2':
+                    ws.send('3')  # heartbeat
+                elif 'changeNumOfStandby' in msg:
+                    self.to_screen(f'{user_id}: channel is on standby')
+                    self._raise_not_live()
 
         stream_id = stream_data['uuid']
         m3u8_url = self._download_json(f'https://www.withny.fun/api/streams/{stream_id}/playback-url', user_id,
