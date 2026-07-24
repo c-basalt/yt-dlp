@@ -160,10 +160,12 @@ class WithnyLiveIE(WithnyBaseIE):
                 elif msg == '2':
                     ws.send('3')  # heartbeat
                 elif 'changeNumOfStandby' in msg:
-                    if not self._downloader.params.get('wait_for_video'):
+                    if self._downloader.params.get('wait_for_video'):
                         self.to_screen(f'{user_id}: channel is on standby')
                     else:
                         raise UserNotLive
+                elif 'streamStart' in msg:
+                    return self._real_extract(url)
 
         stream_id = stream_data['uuid']
         m3u8_url = self._download_json(f'https://www.withny.fun/api/streams/{stream_id}/playback-url', user_id,
