@@ -2,6 +2,7 @@ import itertools
 import json
 import random
 import re
+import time
 
 from .common import InfoExtractor
 from ..networking import Request
@@ -10,6 +11,7 @@ from ..utils import (
     UserNotLive,
     clean_html,
     int_or_none,
+    jwt_decode_hs256,
     parse_iso8601,
     traverse_obj,
     url_or_none,
@@ -124,10 +126,6 @@ class WithnyLiveIE(WithnyBaseIE):
         'only_matching': True,
     }]
 
-    def _raise_not_live(self, msg=None):
-        if not self._downloader.params.get('wait_for_video'):
-            raise UserNotLive(msg)
-
     def _real_extract(self, url):
         user_id = self._match_id(url)
 
@@ -136,11 +134,12 @@ class WithnyLiveIE(WithnyBaseIE):
             ..., ..., 'children', ..., ..., 'initialCast', {dict}, any))
         channel_id = channel_data['ivsChannel']['uuid']
         if (live_status := channel_data['ivsChannel']['state']) != 'live':
-            self._raise_not_live(f'Channel is not live: {live_status}')
+            if not self._downloader.params.get('wait_for_video'):
+                raise UserNotLive(f'Channel is not live: {live_status}')
 
         token = traverse_obj(self._search_next_seg('accessToken', webpage, user_id), (
             ..., ..., 'children', ..., ..., 'children', ..., ..., 'session', 'accessToken', {str}, any))
-        if not token:
+        if not token or not (expiry := traverse_obj(token, ({jwt_decode_hs256}, 'exp', {int}))):
             self.raise_login_required()
 
         ws = self._request_webpage(Request(
@@ -150,14 +149,21 @@ class WithnyLiveIE(WithnyBaseIE):
         ws.send('40/channels,{"sessionID":"%s"}' % ''.join(random.choices('0123456789abcdef', k=16)))
         while True:
             if isinstance(msg := ws.recv(), str):
+                if expiry - time.time() < 300:  # we should get token valid for 24hr and heartbeat every 25s
+                    raise UserNotLive
+                if 'token is invalid' in msg or 'Forbidden' in msg:
+                    self.raise_login_required(f'Invalid login info: {msg}')
+
                 if msg.startswith('42/channels,["stream"'):
                     stream_data = json.loads(msg.split(',', maxsplit=1)[1])[1]
                     break
                 elif msg == '2':
                     ws.send('3')  # heartbeat
                 elif 'changeNumOfStandby' in msg:
-                    self.to_screen(f'{user_id}: channel is on standby')
-                    self._raise_not_live()
+                    if not self._downloader.params.get('wait_for_video'):
+                        self.to_screen(f'{user_id}: channel is on standby')
+                    else:
+                        raise UserNotLive
 
         stream_id = stream_data['uuid']
         m3u8_url = self._download_json(f'https://www.withny.fun/api/streams/{stream_id}/playback-url', user_id,
