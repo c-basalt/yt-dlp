@@ -29,7 +29,8 @@ class WithnyBaseIE(InfoExtractor):
         # _search_nextjs_v13_data() does not work properly, manually parse data instead
         return traverse_obj(re.findall(r'<script\b[^>]*>self\.__next_f\.push\((\[.+?\])\)</script>', webpage), (
             lambda _, v: rf'\"{keyword}\"' in v,
-            {lambda x: self._parse_json(x, video_id)[1]}, {lambda x: x[x.find('['):]}, {json.loads},
+            {lambda x: self._parse_json(x, video_id)[1]},
+            {lambda x: self._search_json(rf'"{keyword}"\s*:\s*', x, keyword, video_id)}
         ))
 
     def _parse_archive(self, archive_data, video_id):
@@ -79,8 +80,7 @@ class WithnyVideoIE(WithnyBaseIE):
         video_id = self._match_id(url)
 
         webpage = self._download_webpage(f'https://www.withny.fun/user/archives/{video_id}', video_id)
-        archive_data = traverse_obj(self._search_next_seg('archiveData', webpage, video_id), (
-            ..., ..., 'children', ..., 'archiveData', {dict}, any))
+        archive_data = self._search_next_seg('archiveData', webpage, video_id)[0]
         if not archive_data:
             raise ExtractorError('Failed to find archive data')
         return self._parse_archive(archive_data, video_id)
@@ -101,8 +101,7 @@ class WithnyPurchaseListIE(WithnyBaseIE):
             page_size = 1
             for page in itertools.count(1):
                 webpage = self._download_webpage(url, 'archive', query={'page': page})
-                archives = traverse_obj(self._search_next_seg('initialArchives', webpage, f'page-{page}'), (
-                    ..., ..., 'initialArchives', {dict}, any))
+                archives = self._search_next_seg('initialArchives', webpage, f'page-{page}')[0]
                 if not archives.get('data'):
                     break
                 for item in traverse_obj(archives, ('data', ..., {
@@ -130,15 +129,14 @@ class WithnyLiveIE(WithnyBaseIE):
         user_id = self._match_id(url)
 
         webpage = self._download_webpage(url, user_id)
-        channel_data = traverse_obj(self._search_next_seg('initialCast', webpage, user_id), (
-            ..., ..., 'children', ..., ..., 'initialCast', {dict}, any))
+        channel_data = self._search_next_seg('initialCast', webpage, user_id)[0]
         channel_id = channel_data['ivsChannel']['uuid']
         if (live_status := channel_data['ivsChannel']['state']) != 'live':
             if not self._downloader.params.get('wait_for_video'):
                 raise UserNotLive(f'Channel is not live: {live_status}')
 
-        token = traverse_obj(self._search_next_seg('accessToken', webpage, user_id), (
-            ..., ..., 'children', ..., ..., 'children', ..., ..., 'session', 'accessToken', {str}, any))
+        token = traverse_obj(self._search_next_seg('session', webpage, user_id), (
+            ..., 'accessToken', {str}, any))
         if not token or not (expiry := traverse_obj(token, ({jwt_decode_hs256}, 'exp', {int}))):
             self.raise_login_required()
 
