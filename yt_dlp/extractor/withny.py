@@ -132,12 +132,11 @@ class WithnyLiveIE(WithnyBaseIE):
         channel_data = self._search_next_seg('initialCast', webpage, user_id)[0]
         channel_id = channel_data['ivsChannel']['uuid']
         if (live_status := channel_data['ivsChannel']['state']) != 'live':
-            if not self._downloader.params.get('wait_for_video'):
-                raise UserNotLive(f'Channel is not live: {live_status}')
+            raise UserNotLive(f'Channel is not live: {live_status}')
 
         token = traverse_obj(self._search_next_seg('session', webpage, user_id), (
             ..., 'accessToken', {str}, any))
-        if not token or not (expiry := traverse_obj(token, ({jwt_decode_hs256}, 'exp', {int}))):
+        if not token or not traverse_obj(token, ({jwt_decode_hs256}, 'exp', {int})):
             self.raise_login_required()
 
         ws = self._request_webpage(Request(
@@ -145,23 +144,21 @@ class WithnyLiveIE(WithnyBaseIE):
             query={'uuid': channel_id, 'token': token, 'passCode': 'undefined', 'EIO': 4, 'transport': 'websocket'}),
             user_id, note='Fetching stream info via WebSocket')
         ws.send('40/channels,{"sessionID":"%s"}' % ''.join(random.choices('0123456789abcdef', k=16)))
-        while True:
-            if isinstance(msg := ws.recv(), str):
-                if expiry - time.time() < 300:  # we should get token valid for 24hr and heartbeat every 25s
-                    raise UserNotLive
+
+        timeout_limit = time.monotonic() + 120
+        while msg := ws.recv():
+            if time.monotonic() > timeout_limit:
+                raise ExtractorError('Failed to get stream info')
+            if isinstance(msg, str):
                 if 'token is invalid' in msg or 'Forbidden' in msg:
                     self.raise_login_required(f'Invalid login info: {msg}')
-
                 if msg.startswith('42/channels,["stream"'):
                     stream_data = json.loads(msg.split(',', maxsplit=1)[1])[1]
                     break
                 elif msg == '2':
                     ws.send('3')  # heartbeat
                 elif 'changeNumOfStandby' in msg:
-                    if self._downloader.params.get('wait_for_video'):
-                        self.to_screen(f'{user_id}: channel is on standby')
-                    else:
-                        raise UserNotLive
+                    raise UserNotLive
                 elif 'streamStart' in msg:
                     return self._real_extract(url)
 
