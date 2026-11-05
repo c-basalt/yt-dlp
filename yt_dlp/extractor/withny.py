@@ -30,7 +30,7 @@ class WithnyBaseIE(InfoExtractor):
         return traverse_obj(re.findall(r'<script\b[^>]*>self\.__next_f\.push\((\[.+?\])\)</script>', webpage), (
             lambda _, v: rf'\"{keyword}\"' in v,
             {lambda x: self._parse_json(x, video_id)[1]},
-            {lambda x: self._search_json(rf'"{keyword}"\s*:\s*', x, keyword, video_id)}
+            {lambda x: self._search_json(rf'"{keyword}"\s*:\s*', x, keyword, video_id)},
         ))
 
     def _parse_archive(self, archive_data, video_id):

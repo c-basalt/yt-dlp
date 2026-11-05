@@ -2293,9 +2293,9 @@ from .wistia import (
     WistiaPlaylistIE,
 )
 from .withny import (
-    WithnyVideoIE,
-    WithnyPurchaseListIE,
     WithnyLiveIE,
+    WithnyPurchaseListIE,
+    WithnyVideoIE,
 )
 from .wordpress import (
     WordpressMiniAudioPlayerEmbedIE,
