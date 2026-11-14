@@ -58,33 +58,26 @@ class RPlayBaseIE(InfoExtractor):
         self.cache.store('rplaylive', 'cf_pass', new_pass)
         self._cf_turnstile_pass = new_pass
 
-    def _request_turnstile_token(self):
-        if token := self._configuration_arg('turnstile_token', ie_key='rplaylive', casesense=True, default=[None])[0]:
-            return token
-        elif provider := self._configuration_arg('turnstile_solver', ie_key='rplaylive', default=[None])[0]:
-            query = {'url': 'https://rplay.live', 'sitekey': '0x4AAAAAAFpJTWip4zXSkTi4'}
-            if token := self._download_json(provider, 'turnstile solver', query=query,
-                                            note='request turnstile solver', fatal=False):
-                return token
-            else:
-                self.report_warning('Failed to get turnstile token')
-
     def _download_turnstile_json(self, url_or_request, video_id, *args, headers={}, **kwargs):
-        if self.cf_turnstile_pass:
+        if provider := self._configuration_arg('turnstile_provider', ie_key='rplaylive', default=[None]):
+            query = {'url': 'https://rplay.live', 'sitekey': '0x4AAAAAAFpJTWip4zXSkTi4'}
+            headers = {**headers, **self._download_json(provider, query=query, note='request turnstile headers')}
+        elif self.cf_turnstile_pass:
             headers['x-browser-pass'] = self.cf_turnstile_pass
-        elif token := self._request_turnstile_token():
+        elif token := self._configuration_arg('turnstile_token', ie_key='rplaylive', casesense=True, default=[None])[0]:
             if re.match(r'\d{13}\.[\da-f]{64}', token):
-                self.report_warning('Expected turnstile token but browser pass found, trying to use for pass')
+                self.report_warning('Expected turnstile token but browser pass found, trying it for pass')
                 self.cf_turnstile_pass = token
                 headers['x-browser-pass'] = self.cf_turnstile_pass
             else:
                 headers['x-turnstile-token'] = token
         else:
             self.report_warning(
-                'Request may fail due to turnstile challenge. '
-                'Use --extractor-args "rplaylive:turnstile_token=1.XXXXXX" to provide challenge token, '
-                'or use --extractor-args "rplaylive:turnstile_solver=http://XXXX" to use a deployed challenge solver, '
-                'or edit ~/.cache/yt-dlp/rplaylive/cf_pass.json to store browser pass')
+                'Request is likely to fail due to cloudflare turnstile challenge. '
+                'Use --extractor-args "rplaylive:turnstile_token=1.XXXXXX" to provide challenge token. '
+                'Or use --extractor-args "rplaylive:turnstile_provider=http://XXXX" to your json endpoint '
+                'that returns dict of challenge headers to use. '
+                'Or edit ~/.cache/yt-dlp/rplaylive/cf_pass.json to store browser pass')
         data, urlh = self._download_json_handle(url_or_request, video_id, *args, headers=headers, **kwargs)
         if new_pass := urlh.headers.get('x-browser-pass'):
             self.cf_turnstile_pass = new_pass
